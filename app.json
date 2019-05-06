@@ -1,0 +1,29 @@
+{
+    "name": "forge-cme-web-tool",
+    "description": "Content Management & Editor Tool",
+    "repository": "https://github.com/golembiovskyi/forge-cme-web-tool",
+    "keywords": [
+        "autodesk",
+        "forge",
+        "bim360"
+    ],
+    "env": {
+        "FORGE_CLIENT_ID": {
+            "description": "Forge Client ID"
+        },
+        "FORGE_CLIENT_SECRET": {
+            "description": "Forge Client Secret"
+        },
+        "FORGE_CALLBACK_URL": {
+            "description": "Callback URL of your Forge app, required for 3-legged OAuth",
+            "value": "https://forge-cme-tool.herokuapp.com/api/forge/callback/oauth"
+        }
+    },
+    "website": "https://forge-cme-tool.herokuapp.com/",
+    "success_url": "/",
+    "buildpacks": [
+        {
+            "url": "https://github.com/jincod/dotnetcore-buildpack.git"
+        }
+    ]
+}

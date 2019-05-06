@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ForgeCMETool
 {
@@ -49,6 +51,7 @@ namespace ForgeCMETool
                 app.UseHsts();
             }
 
+            app.UseDefaultFiles();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
