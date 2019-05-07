@@ -2,7 +2,36 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<!-- End of navbar -->
+<div class="container-fluid fill">
+    <div class="row fill">
+        <div class="col-sm-4 fill">
+            <div class="card fill">
+                <div class="card-header" data-toggle="tooltip" style="padding: 0px;">
+                    <span id="userInfo"></span>
+                    <span id="refreshHubs" class="glyphicon glyphicon-refresh" style="cursor: pointer; display: none" title="Refresh list of files"></span>
+                    <span id="signOut" class="glyphicon glyphicon-log-out" style="margin-top:5px;cursor: pointer; float: right; display: none"
+                            title="Sign out"></span>
+                </div>
+                <div id="userHubs">
+                    <div style="padding-top: 100px; text-align: center;">
+                        <button class="btn btn-lg btn-default" id="autodeskSigninButton">
+                            <img src="https://github.com/Autodesk-Forge/learn.forge.viewhubmodels/raw/master/img/autodesk_text.png"
+                                    height="20"> Sign in
+                        </button>
+                        <br />
+                        <br />
+                        <br /> You may also need to provision your<br /> BIM 360 Docs account for this app.<br />
+                        <a href="https://forge.autodesk.com/blog/bim-360-docs-provisioning-forge-apps">Learn more</a>.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-8 fill">
+            <div id="forgeViewer"></div>
+        </div>
+    </div>
 </div>
+<form id="uploadFile" method='post' enctype="multipart/form-data">
+    <input id="hiddenUploadField" type="file" name="theFile" style="visibility:hidden" />
+</form>
