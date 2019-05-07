@@ -4,7 +4,7 @@
     $('#clearAccount').click(clearAccount);
     $('#defineActivityShow').click(defineActivityModal);
     $('#createAppBundleActivity').click(createAppBundleActivity);
-    $('#startWorkitem').click(startWorkitem);
+    $('#startWorkitem').click(test);
 
     startConnection();
 });
@@ -183,4 +183,13 @@ function startConnection(onReady) {
         launchViewer(data.resourceUrn);
     });
 
+}
+
+function test() {
+    jQuery.ajax({
+        url: 'api/forge/oss/buckets',
+        success: function (url) {
+            location.href = url;
+        }
+    });
 }
