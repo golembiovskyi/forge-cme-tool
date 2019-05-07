@@ -11,13 +11,13 @@
                     <span id="userInfo"></span>
                     <span id="refreshHubs" class="glyphicon glyphicon-refresh" style="cursor: pointer; display: none" title="Refresh list of files"></span>
                     <span id="signOut" class="glyphicon glyphicon-log-out" style="margin-top:5px;cursor: pointer; float: right; display: none"
-                            title="Sign out"></span>
+                          title="Sign out"></span>
                 </div>
                 <div id="userHubs">
                     <div style="padding-top: 100px; text-align: center;">
                         <button class="btn btn-lg btn-default" id="autodeskSigninButton">
                             <img src="https://github.com/Autodesk-Forge/learn.forge.viewhubmodels/raw/master/img/autodesk_text.png"
-                                    height="20"> Sign in
+                                 height="20"> Sign in
                         </button>
                         <br />
                         <br />
@@ -32,6 +32,32 @@
         </div>
     </div>
 </div>
-<form id="uploadFile" method='post' enctype="multipart/form-data">
-    <input id="hiddenUploadField" type="file" name="theFile" style="visibility:hidden" />
-</form>
+<!-- Modal Define AppBundle & Activity -->
+<div class="modal fade" id="defineActivityModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Create/Update AppBundle & Activity</h4>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning"><center>Define AppBundle &amp; Activity only once.<br />Redefine only when your plugin code change (creates a new version).</center></div>
+                <div class="form-group">
+                    <label for="localBundles">Select a local AppBundle:</label>
+                    <select class="form-control" id="localBundles"> </select>
+                    <b>Tip:</b> Make sure .ZIP bundles are placed at <b>/bundles/</b> folder
+                </div>
+                <div class="form-group">
+                    <label for="engines">Select engine:</label>
+                    <select class="form-control" id="engines"> </select>
+                </div>
+                For this sample the .ZIP name is used as suffix to define <b>AppBundle</b> and <b>Activity</b>
+                names. Activities will have file and params input, and file output.
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="clearAccount">Clear account</button>
+                <button type="button" class="btn btn-primary" id="createAppBundleActivity">Create/Update</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="DBApplication">
+    <Name>ModifyFamily</Name>
+    <Assembly>.\ModifyFamily.dll</Assembly>
+    <AddInId>7A756BA3-E3BE-4E3A-8C0C-72ADF6546D88</AddInId>
+    <FullClassName>ModifyFamily.ModifyFamilyApp</FullClassName>
+    <Description>"Modify Family"</Description>
+    <VendorId>GSN</VendorId>
+    <VendorDescription>
+    </VendorDescription>
+  </AddIn>
+</RevitAddIns>

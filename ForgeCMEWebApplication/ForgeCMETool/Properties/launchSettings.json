@@ -13,12 +13,12 @@
       "launchBrowser": true,
       "environmentVariables": {
         "FORGE_CALLBACK_URL": "http://localhost:3000/api/forge/callback/oauth",
-        "FORGE_CLIENT_SECRET": "OVjQkPx1qJGOSFB9",
+        "FORGE_CLIENT_SECRET": "Pb010a93762c34f3",
         "ASPNETCORE_URLS": "http://localhost:3000",
         "FORGE_CLIENT_ID": "3WieLuGyhAn90TLvQ9bHqg0VQPYQcQhS",
         "ASPNETCORE_ENVIRONMENT": "Development",
         "FORGE_DESIGN_AUTOMATION_NICKNAME": "``",
-        "FORGE_WEBHOOK_URL": "http://711b68eb.ngrok.io"
+        "FORGE_WEBHOOK_URL": "http://e0a541af.ngrok.io"
       }
     },
     "ForgeCMETool": {

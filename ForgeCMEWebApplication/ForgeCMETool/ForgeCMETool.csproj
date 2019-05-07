@@ -12,8 +12,14 @@
 
   <ItemGroup>
     <PackageReference Include="Autodesk.Forge" Version="1.5.2" />
+    <PackageReference Include="Autodesk.Forge.DesignAutomation" Version="3.0.0-beta2" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Folder Include="wwwroot\bundles\" />
   </ItemGroup>
 
 </Project>
