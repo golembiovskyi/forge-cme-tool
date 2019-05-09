@@ -24,6 +24,7 @@ namespace ModifyFamily
         public void HandleDesignAutomationReadyEvent(object sender, DesignAutomationReadyEventArgs e)
         {
             e.Succeeded = true;
+            Document doc= e.DesignAutomationData.RevitDoc;
         }
     }
 }

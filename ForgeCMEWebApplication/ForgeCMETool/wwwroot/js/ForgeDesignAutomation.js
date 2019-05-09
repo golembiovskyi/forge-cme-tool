@@ -4,7 +4,7 @@
     $('#clearAccount').click(clearAccount);
     $('#defineActivityShow').click(defineActivityModal);
     $('#createAppBundleActivity').click(createAppBundleActivity);
-    $('#startWorkitem').click(test);
+    $('#startWorkitem').click(startWorkitem);
 
     startConnection();
 });
@@ -103,6 +103,12 @@ function createActivity(cb) {
 
 
 function startWorkitem() {
+    //
+    let vvv = $('#userHubs')['0']['attributes'];
+    //['aria - activedescendant'];
+    //['0']['attributes']['aria - activedescendant']['nodeValue'];
+        //= "https://developer.api.autodesk.com/project/v1/hubs/b.14c4c930-3be2-47fb-a2a6-505e55e69eb9"
+    //
     let sourceNode = $('#appBuckets').jstree(true).get_selected(true)[0];
     // use == here because sourceNode may be undefined or null
     if (sourceNode == null || sourceNode.type !== 'object' ) {
