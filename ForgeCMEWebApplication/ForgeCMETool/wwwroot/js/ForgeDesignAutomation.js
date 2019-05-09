@@ -109,7 +109,7 @@ function startWorkitem() {
     //['0']['attributes']['aria - activedescendant']['nodeValue'];
         //= "https://developer.api.autodesk.com/project/v1/hubs/b.14c4c930-3be2-47fb-a2a6-505e55e69eb9"
     //
-    let sourceNode = $('#appBuckets').jstree(true).get_selected(true)[0];
+    let sourceNode = $('#userHubs').jstree(true).get_selected(true)[0];
     // use == here because sourceNode may be undefined or null
     if (sourceNode == null || sourceNode.type !== 'object' ) {
         alert('Can not get the selected file, please make sure you select a file as input');
@@ -180,7 +180,7 @@ function startConnection(onReady) {
     });
     connection.on("onComplete", function (message) {
         writeLog(message);
-        let instance = $('#appBuckets').jstree(true);
+        let instance = $('#userHubs').jstree(true);
         selectNode = instance.get_selected(true)[0];
         parentNode = instance.get_parent(selectNode);
         instance.refresh_node(parentNode);
