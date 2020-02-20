@@ -13,6 +13,7 @@ namespace ForgeCMETool.Controllers
     [ApiController]
     public class OSSController : ControllerBase
     {
+        public static string NickName { get { return OAuthController.GetAppSetting("FORGE_CLIENT_ID"); } }
         /// <summary>
         /// Return list of buckets (id=#) or list of objects (id=bucketKey)
         /// </summary>
@@ -26,7 +27,8 @@ namespace ForgeCMETool.Controllers
             //
             Credentials credentials = await Credentials.FromSessionAsync(base.Request.Cookies, Response.Cookies);
             //
-            
+            //string bucketKey = NickName.ToLower() + "_designautomation";
+            //id = "#";
             //
 
             if (id == "#") // root

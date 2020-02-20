@@ -18,7 +18,7 @@
         "FORGE_CLIENT_ID": "3WieLuGyhAn90TLvQ9bHqg0VQPYQcQhS",
         "ASPNETCORE_ENVIRONMENT": "Development",
         "FORGE_DESIGN_AUTOMATION_NICKNAME": "``",
-        "FORGE_WEBHOOK_URL": "http://e0a541af.ngrok.io"
+        "FORGE_WEBHOOK_URL": "http://7f40e2ef.ngrok.io"
       }
     },
     "ForgeCMETool": {

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <UserSecretsId>dc67545e-f79b-4ad1-8592-21393ff8368d</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +14,9 @@
   <ItemGroup>
     <PackageReference Include="Autodesk.Forge" Version="1.5.2" />
     <PackageReference Include="Autodesk.Forge.DesignAutomation" Version="3.0.0-beta2" />
+    <PackageReference Include="Hangfire" Version="1.7.2" />
+    <PackageReference Include="HangFire.Core" Version="1.7.2" />
+    <PackageReference Include="Hangfire.MemoryStorage" Version="1.6.0" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
   </ItemGroup>

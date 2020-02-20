@@ -162,7 +162,36 @@ function prepareUserHubsTree() {
         launchViewer(urn, viewableId);
       }
       else {
-        launchViewer(data.node.id);
+          launchViewer(data.node.id);
+
+          //startConnection(function () {
+          //    var formData = new FormData();
+          //    formData.append('inputFile', data.node.parent);
+          //    //formData.append('data', JSON.stringify({
+          //    //    width: $('#width').val(),
+          //    //    height: $('#height').val(),
+          //   //     activityName: $('#activity').val(),
+          //   //     browerConnectionId: connectionId
+          //    //}));
+          //    writeLog('Uploading input file...');
+          //    $.ajax({
+          //        url: 'api/forge/designautomation/workitems',
+          //        data: formData,
+          //        processData: false,
+          //        contentType: false,
+          //        type: 'POST',
+          //        success: function (res) {
+          //            writeLog('Workitem started: ' + res.workItemId);
+          //        }
+          //    });
+          //});
+          
+          $.ajax({
+              url: 'api/forge/designautomation/testing',
+              contentType: "application/json",
+              data: { "id": data.node.parent },
+          });
+          
       }
     }
   });
@@ -220,4 +249,37 @@ function showUser() {
       $('#userInfo').html(img + profile.name);
     }
   });
+}
+
+function startConnection(onReady) {
+    if (connection && connection.connectionState) { if (onReady) onReady(); return; }
+    connection = new signalR.HubConnectionBuilder().withUrl("/api/signalr/forgecommunication").build();
+    connection.start()
+        .then(function () {
+            connection.invoke('getConnectionId')
+                .then(function (id) {
+                    connectionId = id; // we'll need this...
+                    if (onReady) onReady();
+                });
+        });
+
+    //connection.on("downloadResult", function (url) {
+    //    writeLog('<a href="' + url + '">Download result file here</a>');
+    //});
+
+    //connection.on("countItResult", function (result) {
+    //    fillCount(JSON.parse(result));
+    //    writeLog(result);
+    //});
+    //connection.on("onComplete", function (message) {
+    //    writeLog(message);
+    //    let instance = $('#appBuckets').jstree(true);
+    //    selectNode = instance.get_selected(true)[0];
+    //    parentNode = instance.get_parent(selectNode);
+    //    instance.refresh_node(parentNode);
+    //});
+    //connection.on("extractionFinished", function (data) {
+    //    launchViewer(data.resourceUrn);
+    //});
+
 }

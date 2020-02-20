@@ -6,30 +6,37 @@ using Newtonsoft.Json.Linq;
 namespace ForgeCMETool.Controllers
 {
     public class UserController : ControllerBase
-  {
-    [HttpGet]
-    [Route("api/forge/user/profile")]
-    public async Task<JObject> GetUserProfileAsync()
     {
-      Credentials credentials = await Credentials.FromSessionAsync(Request.Cookies, Response.Cookies);
-      if (credentials == null)
-      {
-        return null;
-      }
+        public Credentials Credentials { get;  set; }
+        [HttpGet]
+        [Route("api/forge/user/profile")]
+        public async Task<JObject> GetUserProfileAsync()
+        {
+            if (Credentials == null)
+            {
+                Credentials = await Credentials.FromSessionAsync(Request.Cookies, Response.Cookies);
+            }
+            
+            //if (Credentials == null)
+            //{
+            //    return null;
+            //}
 
-      // the API SDK
-      UserProfileApi userApi = new UserProfileApi();
-      userApi.Configuration.AccessToken = credentials.TokenInternal;
+            // the API SDK
+            UserProfileApi userApi = new UserProfileApi();
+            userApi.Configuration.AccessToken = Credentials.TokenInternal;
 
 
-      // get the user profile
-      dynamic userProfile = await userApi.GetUserProfileAsync();
+            // get the user profile
+            dynamic userProfile = await userApi.GetUserProfileAsync();
 
-      // prepare a response with name & picture
-      dynamic response = new JObject();
-      response.name = string.Format("{0} {1}", userProfile.firstName, userProfile.lastName);
-      response.picture = userProfile.profileImages.sizeX40;
-      return response;
+            // prepare a response with name & picture
+            dynamic response = new JObject();
+            response.name = string.Format("{0} {1}", userProfile.firstName, userProfile.lastName);
+            response.picture = userProfile.profileImages.sizeX40;
+            response.id = userProfile.userId;
+            return response;
+        }
+
     }
-  }
 }

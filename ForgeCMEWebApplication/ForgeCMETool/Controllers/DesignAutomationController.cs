@@ -2,9 +2,12 @@
 using Autodesk.Forge.DesignAutomation;
 using Autodesk.Forge.DesignAutomation.Model;
 using Autodesk.Forge.Model;
+using Hangfire;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 using System;
@@ -29,11 +32,16 @@ namespace ForgeCMETool.Controllers
         private IHostingEnvironment _env;
         // used to access the SignalR Hub
         private IHubContext<ForgeCommunicationHub> _hubContext;
+        private const string ACTIVITY_NAME = "UpdateFamilyActivity";
+
+        private string ActivityFullName { get { return string.Format("{0}.{1}+{2}", NickName, ACTIVITY_NAME, Alias); } }
         // Local folder for bundles
         public string LocalBundlesFolder { get { return Path.Combine(_env.WebRootPath, "bundles"); } }
         /// Prefix for AppBundles and Activities
-        public static string NickName {
-            get {
+        public static string NickName
+        {
+            get
+            {
                 var nickName = OAuthController.GetAppSetting("FORGE_DESIGN_AUTOMATION_NICKNAME");
                 return !String.IsNullOrEmpty(nickName) ? nickName : OAuthController.GetAppSetting("FORGE_CLIENT_ID");
             }
@@ -50,13 +58,6 @@ namespace ForgeCMETool.Controllers
             _env = env;
             _hubContext = hubContext;
         }
-
-        // **********************************
-        //
-        // Next we will add the methods here
-        //
-        // **********************************
-
 
         /// <summary>
         /// Names of app bundles on this project
@@ -203,10 +204,14 @@ namespace ForgeCMETool.Controllers
                     Engine = engineName,
                     Parameters = new Dictionary<string, Parameter>()
                     {
+                        //{ "inputFile", new Parameter() { Description = "input file", LocalName = "$(inputFile)", Ondemand = false, Required = true, Verb = Verb.Get, Zip = false } },
+                        //{ "inputJson", new Parameter() { Description = "input json", LocalName = "params.json", Ondemand = false, Required = false, Verb = Verb.Get, Zip = false } },
+                        //{ "outputTxt", new Parameter() { Description = "output Text file", LocalName = "result.txt", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
+                        //{ "outputFile", new Parameter() { Description = "output model file", LocalName = "result." + engineAttributes.extension, Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } }
                         { "inputFile", new Parameter() { Description = "input file", LocalName = "$(inputFile)", Ondemand = false, Required = true, Verb = Verb.Get, Zip = false } },
-                        { "inputJson", new Parameter() { Description = "input json", LocalName = "params.json", Ondemand = false, Required = false, Verb = Verb.Get, Zip = false } },
-                        { "outputTxt", new Parameter() { Description = "output Text file", LocalName = "result.txt", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
-                        { "outputFile", new Parameter() { Description = "output model file", LocalName = "result." + engineAttributes.extension, Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } }
+                        //{ "inputJson", new Parameter() { Description = "input json", LocalName = "params.json", Ondemand = false, Required = false, Verb = Verb.Get, Zip = false } },
+                        //{ "outputTxt", new Parameter() { Description = "output Text file", LocalName = "result.txt", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
+                        { "outputFile", new Parameter() { Description = "output model file", LocalName = "$(inputFile)", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } }
                     },
                     Settings = new Dictionary<string, ISetting>()
                     {
@@ -248,73 +253,116 @@ namespace ForgeCMETool.Controllers
         [HttpPost]
         [Route("api/forge/designautomation/startworkitem")]
         public async Task<IActionResult> StartWorkItem([FromForm]StartWorkitemInput input)
+        //public async Task<IActionResult> StartWorkItem(string id)
         {
-            // basic input validation
-            string activityName = string.Format("{0}.{1}", NickName, input.activityId);
-            string browerConnectionId = input.browerConnectionId;
-            string bucketKey = input.bucketId;
-            string inputFileNameOSS = input.objectId;
-
-            bool isCount = input.activityId.ToLower() == "countitactivity+dev";
-
             // OAuth token
             //
             Credentials credentials = await Credentials.FromSessionAsync(base.Request.Cookies, Response.Cookies);
+            string id = $"https://developer.api.autodesk.com/data/v1/projects/b.9f77180c-7cd1-40d8-9d70-d80608dfdfd9/items/urn:adsk.wipprod:dm.lineage:SXwSwlsTT_GkrOQ3GXtDUA";
+            // extract the projectId & itemId from the href
+            ItemsApi itemApi = new ItemsApi();
+            itemApi.Configuration.AccessToken = credentials.TokenInternal;
+            string[] idParams = id.Split('/');
+            string itemId = idParams[idParams.Length - 1];
+            string projectId = idParams[idParams.Length - 3];
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            List<int?> filterVersionNumber = new List<int?>() { 1 };
+            var versions = await itemApi.GetItemVersionsAsync(projectId, itemId);
+
+            string folderId = item.data.relationships.parent.data.id;
+            string displayFileName = item.data.attributes.displayName;
+            string versionId = null;
+            foreach (KeyValuePair<string, dynamic> version in new DynamicDictionaryItems(versions.data))
+            {
+                DateTime versionDate = version.Value.attributes.lastModifiedTime;
+                string verNum = version.Value.id.Split("=")[1];
+                string userName = version.Value.attributes.lastModifiedUserName;
+                versionId = version.Value.id;
+                string urn = string.Empty;
+                try { urn = (string)version.Value.relationships.derivatives.data.id; }
+                catch { }
+            }
             //
-            //dynamic oauth = await OAuthController.GetInternalAsync();
-            
+
+            // basic input validation
+            JObject workItemData = JObject.Parse(input.data);
+            string widthParam = workItemData["width"].Value<string>();
+            string heigthParam = workItemData["height"].Value<string>();
+            string activityName = string.Format("{0}.{1}", NickName, workItemData["activityName"].Value<string>());
+            string browerConnectionId = workItemData["browerConnectionId"].Value<string>();
+
+            // save the file on the server
+            var fileSavePath = Path.Combine(_env.ContentRootPath, Path.GetFileName(input.inputFile.FileName));
+            using (var stream = new FileStream(fileSavePath, FileMode.Create)) await input.inputFile.CopyToAsync(stream);
+
+
+
+            // upload file to OSS Bucket
+            // 1. ensure bucket existis
+            string bucketKey = NickName.ToLower() + "_designautomation";
+            BucketsApi buckets = new BucketsApi();
+            buckets.Configuration.AccessToken = credentials.TokenInternal;
+            try
+            {
+                PostBucketsPayload bucketPayload = new PostBucketsPayload(bucketKey, null, PostBucketsPayload.PolicyKeyEnum.Transient);
+                await buckets.CreateBucketAsync(bucketPayload, "US");
+            }
+            catch { }; // in case bucket already exists
+                       // 2. upload inputFile
+            string inputFileNameOSS = string.Format("{0}_input_{1}", DateTime.Now.ToString("yyyyMMddhhmmss"), Path.GetFileName(input.inputFile.FileName)); // avoid overriding
+            ObjectsApi objects = new ObjectsApi();
+            objects.Configuration.AccessToken = credentials.TokenInternal;
+            using (StreamReader streamReader = new StreamReader(fileSavePath))
+                await objects.UploadObjectAsync(bucketKey, inputFileNameOSS, (int)streamReader.BaseStream.Length, streamReader.BaseStream, "application/octet-stream");
+            System.IO.File.Delete(fileSavePath);// delete server copy
+
             // prepare workitem arguments
             // 1. input file
             XrefTreeArgument inputFileArgument = new XrefTreeArgument()
             {
                 Url = string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", bucketKey, inputFileNameOSS),
                 Headers = new Dictionary<string, string>()
-                {
-                    // { "Authorization", "Bearer " + oauth.access_token }
-                    { "Authorization", "Bearer " + credentials.TokenInternal }
-                }
+                 {
+                     { "Authorization", "Bearer " + credentials.TokenInternal }
+                 }
             };
+            //XrefTreeArgument inputFileArgument = BuildBIM360DownloadURL(oauth.access_token, projectId, versionId);
             // 2. input json
+            dynamic inputJson = new JObject();
+            inputJson.Width = widthParam;
+            inputJson.Height = heigthParam;
             XrefTreeArgument inputJsonArgument = new XrefTreeArgument()
             {
-                Url = "data:application/json, " + (input.data.Replace("\"", "'"))
+                Url = "data:application/json, " + ((JObject)inputJson).ToString(Formatting.None).Replace("\"", "'")
             };
-
             // 3. output file
-            string outputFileNameOSS = null;
-            if ( isCount )
-                outputFileNameOSS = string.Format("{0}_{1}.txt", DateTime.Now.ToString("yyyyMMddhhmmss"), Path.GetFileNameWithoutExtension(inputFileNameOSS)); // avoid overriding
-            else
-                outputFileNameOSS = string.Format("{0}_{1}", DateTime.Now.ToString("yyyyMMddhhmmss"), Path.GetFileName(inputFileNameOSS)); // avoid overriding
+            string outputFileNameOSS = string.Format("{0}_output_{1}", DateTime.Now.ToString("yyyyMMddhhmmss"), Path.GetFileName(input.inputFile.FileName)); // avoid overriding
             XrefTreeArgument outputFileArgument = new XrefTreeArgument()
             {
                 Url = string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", bucketKey, outputFileNameOSS),
                 Verb = Verb.Put,
                 Headers = new Dictionary<string, string>()
-            {
-                    //{"Authorization", "Bearer " + oauth.access_token }
-                {"Authorization", "Bearer " + credentials.TokenInternal }
-            }
+                   {
+                       {"Authorization", "Bearer " + credentials.TokenInternal }
+                   }
             };
 
             // prepare & submit workitem
-            // the callback contains the connectionId (used to identify the client) and the outputFileName of this workitem
-            string callbackUrl = string.Format("{0}/api/forge/callback/designautomation?id={1}&bucketKey={2}&outputFileName={3}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId, bucketKey, outputFileNameOSS);
+            string callbackUrl = string.Format("{0}/api/forge/callback/designautomation?id={1}&outputFileName={2}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId, outputFileNameOSS);
             WorkItem workItemSpec = new WorkItem()
             {
                 ActivityId = activityName,
                 Arguments = new Dictionary<string, IArgument>()
                 {
-                    { "inputFile",  inputFileArgument },
+                    { "inputFile", inputFileArgument },
                     { "inputJson",  inputJsonArgument },
-                    { isCount? "outputTxt": "outputFile",  outputFileArgument },
+                    { "outputFile", outputFileArgument },
                     { "onComplete", new XrefTreeArgument { Verb = Verb.Post, Url = callbackUrl } }
                 }
             };
             WorkItemStatus workItemStatus = await _designAutomation.CreateWorkItemsAsync(workItemSpec);
 
             return Ok(new { WorkItemId = workItemStatus.Id });
-
         }
 
 
@@ -344,7 +392,7 @@ namespace ForgeCMETool.Controllers
                 dynamic signedUrl = await objectsApi.CreateSignedResourceAsyncWithHttpInfo(bucketKey, outputFileName, new PostBucketsSigned(10), "read");
                 string signedUrlLink = signedUrl.Data.signedUrl;
                 // send the json content to client if result is text, for countitactivity
-                if ( Path.GetExtension(outputFileName) == ".txt")
+                if (Path.GetExtension(outputFileName) == ".txt")
                 {
                     // get the content of the result file
                     client = new RestClient(signedUrlLink);
@@ -379,14 +427,328 @@ namespace ForgeCMETool.Controllers
         /// </summary>
         public class StartWorkitemInput
         {
-            public string objectId { get; set; }
-            public string bucketId { get; set; }
+            public IFormFile inputFile { get; set; }
             public string data { get; set; }
-            public string browerConnectionId { get; set; }
-            public string activityId { get; set; }
         }
-    }
 
+        [HttpGet]
+        [Route("api/forge/designautomation/testing1")]
+        //public async Task<IActionResult> Testing(string id)
+        public async Task<IList<jsTreeNode>> Testing1(string id)
+        {
+            IList<jsTreeNode> nodes = new List<jsTreeNode>();
+            // the API SDK
+            Credentials credentials = await Credentials.FromSessionAsync(base.Request.Cookies, Response.Cookies);
+            ItemsApi itemApi = new ItemsApi();
+            itemApi.Configuration.AccessToken = credentials.TokenInternal;
+
+            // extract the projectId & itemId from the href
+            string[] idParams = id.Split('/');
+            string itemId = idParams[idParams.Length - 1];
+            string projectId = idParams[idParams.Length - 3];
+
+            var versions = await itemApi.GetItemVersionsAsync(projectId, itemId);
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            string folderId = item.data.relationships.parent.data.id;
+            string fileName = item.data.attributes.displayName;
+            string versionId = null;
+            foreach (KeyValuePair<string, dynamic> version in new DynamicDictionaryItems(versions.data))
+            {
+                DateTime versionDate = version.Value.attributes.lastModifiedTime;
+                string verNum = version.Value.id.Split("=")[1];
+                string userName = version.Value.attributes.lastModifiedUserName;
+                versionId = version.Value.id;
+                string urn = string.Empty;
+                try { urn = (string)version.Value.relationships.derivatives.data.id; }
+                catch { }
+            }
+            // Prepare the DA input from BIM 360
+            var input = await BuildBIM360DownloadURL(credentials.TokenInternal, projectId, versionId);
+            //var output = await PreWorkNewVersion(credentials.TokenInternal, projectId, versionId);
+            // Create a version for this new file
+            // prepare storage
+            ProjectsApi projectApis = new ProjectsApi();
+            projectApis.Configuration.AccessToken = credentials.TokenInternal;
+            StorageRelationshipsTargetData storageRelData = new StorageRelationshipsTargetData(StorageRelationshipsTargetData.TypeEnum.Folders, folderId);
+            CreateStorageDataRelationshipsTarget storageTarget = new CreateStorageDataRelationshipsTarget(storageRelData);
+            CreateStorageDataRelationships storageRel = new CreateStorageDataRelationships(storageTarget);
+            BaseAttributesExtensionObject attributes = new BaseAttributesExtensionObject(string.Empty, string.Empty, new JsonApiLink(string.Empty), null);
+            CreateStorageDataAttributes storageAtt = new CreateStorageDataAttributes(fileName, attributes);
+            CreateStorageData storageData = new CreateStorageData(CreateStorageData.TypeEnum.Objects, storageAtt, storageRel);
+            CreateStorage storage = new CreateStorage(new JsonApiVersionJsonapi(JsonApiVersionJsonapi.VersionEnum._0), storageData);
+            dynamic storageCreated = await projectApis.PostStorageAsync(projectId, storage);
+
+            VersionsApi versionsApi = new VersionsApi();
+            versionsApi.Configuration.AccessToken = credentials.TokenInternal;
+            CreateVersion newVersionData = new CreateVersion
+                (
+                new JsonApiVersionJsonapi(JsonApiVersionJsonapi.VersionEnum._0),
+                new CreateVersionData
+                (
+                    CreateVersionData.TypeEnum.Versions,
+                    new CreateStorageDataAttributes
+                    (
+                        fileName,
+                        new BaseAttributesExtensionObject
+                        (
+                            "versions:autodesk.bim360:File",
+                            "1.0",
+                            new JsonApiLink(string.Empty),
+                            null
+                        )
+                   ),
+                    new CreateVersionDataRelationships
+                             (
+                                new CreateVersionDataRelationshipsItem
+                                (
+                                  new CreateVersionDataRelationshipsItemData
+                                  (
+                                    CreateVersionDataRelationshipsItemData.TypeEnum.Items,
+                                    itemId
+                                  )
+                                ),
+                                new CreateItemRelationshipsStorage
+                                (
+                                  new CreateItemRelationshipsStorageData
+                                  (
+                                    CreateItemRelationshipsStorageData.TypeEnum.Objects,
+                                    storageCreated.data.id
+                                  )
+                                )
+                             )
+                           )
+                        );
+            dynamic newVersion = await versionsApi.PostVersionAsync(projectId, newVersionData);
+            return nodes;
+        }
+
+        [HttpGet]
+        [Route("api/forge/designautomation/testing")]
+        //public async Task<IActionResult> Testing(string id)
+        public async Task<IList<jsTreeNode>> Testing(string id)
+        {
+            IList<jsTreeNode> nodes = new List<jsTreeNode>();
+            // the API SDK
+            Credentials credentials = await Credentials.FromSessionAsync(base.Request.Cookies, Response.Cookies);
+            ItemsApi itemApi = new ItemsApi();
+            itemApi.Configuration.AccessToken = credentials.TokenInternal;
+
+            // extract the projectId & itemId from the href
+            string[] idParams = id.Split('/');
+            string itemId = idParams[idParams.Length - 1];
+            string projectId = idParams[idParams.Length - 3];
+
+            var versions = await itemApi.GetItemVersionsAsync(projectId, itemId);
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            string folderId = item.data.relationships.parent.data.id;
+            string displayFileName = item.data.attributes.displayName;
+            string versionId = null;
+            foreach (KeyValuePair<string, dynamic> version in new DynamicDictionaryItems(versions.data))
+            {
+                DateTime versionDate = version.Value.attributes.lastModifiedTime;
+                string verNum = version.Value.id.Split("=")[1];
+                string userName = version.Value.attributes.lastModifiedUserName;
+                versionId = version.Value.id;
+                if (verNum=="1")
+                {
+                    break;
+                }
+                string urn = string.Empty;
+                try { urn = (string)version.Value.relationships.derivatives.data.id; }
+                catch { }
+            }
+            //get user id
+            UserController user = new UserController();
+            user.Credentials = credentials;
+            dynamic userProfile = await user.GetUserProfileAsync();
+            string userId = userProfile.id;
+            //// Prepare the DA input from BIM 360
+            //var input = await BuildBIM360DownloadURL(credentials.TokenInternal, projectId, versionId);
+            //// Prepare the DA output to BIM 360
+            //var storageInfo = await PreWorkNewVersion(credentials.TokenInternal, projectId, versionId);
+            //string storageId = storageInfo.storageId;
+            //string fileName = storageInfo.fileName;
+            //try
+            //{
+            //    BackgroundJob.Schedule(() => PostProcessFile(credentials.TokenInternal, userId, projectId, itemId, storageId, fileName), TimeSpan.FromSeconds(1));
+            //}
+            //catch (Exception e) { }
+            //
+            StorageInfo info = await PreWorkNewVersion(credentials.TokenInternal, projectId, versionId);
+            string callbackUrl = string.Format("{0}/api/forge/callback/designautomation/revit/{1}/{2}/{3}/{4}/{5}", Credentials.GetAppSetting("FORGE_WEBHOOK_URL"), userId, projectId, info.itemId.Base64Encode(), info.storageId.Base64Encode(), info.fileName.Base64Encode());
+
+            WorkItem workItemSpec = new WorkItem()
+            {
+                ActivityId = ActivityFullName,
+                Arguments = new Dictionary<string, IArgument>()
+                    {
+                        { "inputFile", await BuildBIM360DownloadURL(credentials.TokenInternal, projectId, versionId) },
+                        { "outputFile",  await BuildBIM360UploadURL(credentials.TokenInternal, info)  },
+                        { "onComplete", new XrefTreeArgument { Verb = Verb.Post, Url = callbackUrl } }
+                    }
+            };
+            WorkItemStatus workItemStatus = await _designAutomation.CreateWorkItemsAsync(workItemSpec);
+            try
+            {
+                var storageInfo = await PreWorkNewVersion(credentials.TokenInternal, projectId, versionId);
+                string storageId = storageInfo.storageId;
+                string fileName = storageInfo.fileName;
+                BackgroundJob.Schedule(() => PostProcessFile(credentials.TokenInternal, userId, projectId, itemId, storageId, fileName), TimeSpan.FromSeconds(1));
+            }
+            catch (Exception e) { }
+
+            //
+            return nodes;
+        }
+        /// <summary>
+        /// Prepare the DA input from BIM 360
+        /// </summary>
+        private async Task<XrefTreeArgument> BuildBIM360DownloadURL(string userAccessToken, string projectId, string versionId)
+        {
+            VersionsApi versionApi = new VersionsApi();
+            versionApi.Configuration.AccessToken = userAccessToken;
+            dynamic version = await versionApi.GetVersionAsync(projectId, versionId);
+            //dynamic versionItem = await versionApi.GetVersionItemAsync(projectId, versionId);
+
+            string[] versionItemParams = ((string)version.data.relationships.storage.data.id).Split('/');
+            string[] bucketKeyParams = versionItemParams[versionItemParams.Length - 2].Split(':');
+            string bucketKey = bucketKeyParams[bucketKeyParams.Length - 1];
+            string objectName = versionItemParams[versionItemParams.Length - 1];
+            string downloadUrl = string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", bucketKey, objectName);
+
+            return new XrefTreeArgument()
+            {
+                Url = downloadUrl,
+                Verb = Verb.Get,
+                Headers = new Dictionary<string, string>()
+                {
+                    { "Authorization", "Bearer " + userAccessToken }
+                }
+            };
+        }
+
+        /// <summary>
+        /// Prepare the DA output to BIM 360
+        /// </summary>
+
+        private async Task<dynamic> PreWorkNewVersion(string userAccessToken, string projectId, string versionId)
+        {
+            // get version
+            VersionsApi versionApi = new VersionsApi();
+            versionApi.Configuration.AccessToken = userAccessToken;
+            dynamic versionItem = await versionApi.GetVersionItemAsync(projectId, versionId);
+
+            // get item
+            ItemsApi itemApi = new ItemsApi();
+            itemApi.Configuration.AccessToken = userAccessToken;
+            string itemId = versionItem.data.id;
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            string folderId = item.data.relationships.parent.data.id;
+            string fileName = item.data.attributes.displayName;
+
+            // prepare storage
+            ProjectsApi projectApi = new ProjectsApi();
+            projectApi.Configuration.AccessToken = userAccessToken;
+            StorageRelationshipsTargetData storageRelData = new StorageRelationshipsTargetData(StorageRelationshipsTargetData.TypeEnum.Folders, folderId);
+            CreateStorageDataRelationshipsTarget storageTarget = new CreateStorageDataRelationshipsTarget(storageRelData);
+            CreateStorageDataRelationships storageRel = new CreateStorageDataRelationships(storageTarget);
+            BaseAttributesExtensionObject attributes = new BaseAttributesExtensionObject(string.Empty, string.Empty, new JsonApiLink(string.Empty), null);
+            CreateStorageDataAttributes storageAtt = new CreateStorageDataAttributes(fileName, attributes);
+            CreateStorageData storageData = new CreateStorageData(CreateStorageData.TypeEnum.Objects, storageAtt, storageRel);
+            CreateStorage storage = new CreateStorage(new JsonApiVersionJsonapi(JsonApiVersionJsonapi.VersionEnum._0), storageData);
+            dynamic storageCreated = await projectApi.PostStorageAsync(projectId, storage);
+
+            string[] storageIdParams = ((string)storageCreated.data.id).Split('/');
+            string[] bucketKeyParams = storageIdParams[storageIdParams.Length - 2].Split(':');
+            string bucketKey = bucketKeyParams[bucketKeyParams.Length - 1];
+            string objectName = storageIdParams[storageIdParams.Length - 1];
+
+            string uploadUrl = string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", bucketKey, objectName);
+
+            return new StorageInfo
+            {
+                fileName = fileName,
+                itemId = item.data.id,
+                storageId = storageCreated.data.id,
+                uploadUrl = uploadUrl
+            };
+        }
+
+        //
+        private async Task<XrefTreeArgument> BuildBIM360UploadURL(string userAccessToken, StorageInfo info)
+        {
+            return new XrefTreeArgument()
+            {
+                Url = info.uploadUrl,
+                Verb = Verb.Put,
+                Headers = new Dictionary<string, string>()
+                {
+                    { "Authorization", "Bearer " + userAccessToken }
+                }
+            };
+        }
+
+        /// <summary>
+        /// After the DA is done and the output file was saved into BIM 360, you need to mark that as a new version 
+        /// </summary>
+        [HttpGet]
+        [Route("api/forge/designautomation/postprocessfile")]
+        public async Task PostProcessFile(string userAccessToken, string userId, string projectId, string itemId, string storageId, string fileName)
+        {
+            //Credentials credentials = await Credentials.FromDatabaseAsync(userId);
+
+            VersionsApi versionsApis = new VersionsApi();
+            versionsApis.Configuration.AccessToken = userAccessToken;
+            CreateVersion newVersionData = new CreateVersion
+            (
+               new JsonApiVersionJsonapi(JsonApiVersionJsonapi.VersionEnum._0),
+               new CreateVersionData
+               (
+                 CreateVersionData.TypeEnum.Versions,
+                 new CreateStorageDataAttributes
+                 (
+                   fileName,
+                   new BaseAttributesExtensionObject
+                   (
+                     "versions:autodesk.bim360:File",
+                     "1.0",
+                     new JsonApiLink(string.Empty),
+                     null
+                   )
+                 ),
+                 new CreateVersionDataRelationships
+                 (
+                    new CreateVersionDataRelationshipsItem
+                    (
+                      new CreateVersionDataRelationshipsItemData
+                      (
+                        CreateVersionDataRelationshipsItemData.TypeEnum.Items,
+                        itemId
+                      )
+                    ),
+                    new CreateItemRelationshipsStorage
+                    (
+                      new CreateItemRelationshipsStorageData
+                      (
+                        CreateItemRelationshipsStorageData.TypeEnum.Objects,
+                        storageId
+                      )
+                    )
+                 )
+               )
+            );
+            dynamic newVersion = await versionsApis.PostVersionAsync(projectId, newVersionData);
+        }
+
+        private struct StorageInfo
+        {
+            public string fileName;
+            public string itemId;
+            public string storageId;
+            public string uploadUrl;
+        }
+
+    }
     /// <summary>
     /// Class uses for SignalR
     /// </summary>

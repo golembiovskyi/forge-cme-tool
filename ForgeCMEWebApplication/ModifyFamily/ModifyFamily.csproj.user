@@ -3,4 +3,10 @@
   <PropertyGroup>
     <ProjectView>ProjectFiles</ProjectView>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit 2018\Revit.exe</StartProgram>
+    <StartArguments>"C:\Users\golem\Documents\GitHub\forge-cme-tool\ForgeCMEWebApplication\SandBox\305_TeaBrewer_WilburCurtis_TCTT-10000.rfa"</StartArguments>
+    <StartWorkingDirectory>C:\Users\golem\Documents\GitHub\forge-cme-tool\ForgeCMEWebApplication\SandBox\</StartWorkingDirectory>
+  </PropertyGroup>
 </Project>

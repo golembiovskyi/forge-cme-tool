@@ -36,7 +36,9 @@ namespace ForgeCMETool.Controllers
             if (Credentials == null) { return null; }
 
             IList<jsTreeNode> nodes = new List<jsTreeNode>();
-
+            //
+            //id = "dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLjBCRUJIVGUyU0kyZmhKRVVNMkM4Ymc_dmVyc2lvbj0x";
+            //
             if (id == "#") // root
                 return await GetHubsAsync();
             else
@@ -155,7 +157,7 @@ namespace ForgeCMETool.Controllers
 
         private async Task<IList<jsTreeNode>> GetFolderContents(string href)
         {
-            IList<jsTreeNode> nodes = new List<jsTreeNode>();
+                IList<jsTreeNode> nodes = new List<jsTreeNode>();
 
             // the API SDK
             FoldersApi folderApi = new FoldersApi();
@@ -252,6 +254,9 @@ namespace ForgeCMETool.Controllers
             string projectId = idParams[idParams.Length - 3];
 
             var versions = await itemApi.GetItemVersionsAsync(projectId, itemId);
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            string folderId = item.data.relationships.parent.data.id;
+
             foreach (KeyValuePair<string, dynamic> version in new DynamicDictionaryItems(versions.data))
             {
                 DateTime versionDate = version.Value.attributes.lastModifiedTime;
@@ -279,21 +284,7 @@ namespace ForgeCMETool.Controllers
             return System.Convert.ToBase64String(plainTextBytes).Replace("/", "_");
         }
 
-        public class jsTreeNode
-        {
-            public jsTreeNode(string id, string text, string type, bool children)
-            {
-                this.id = id;
-                this.text = text;
-                this.type = type;
-                this.children = children;
-            }
 
-            public string id { get; set; }
-            public string text { get; set; }
-            public string type { get; set; }
-            public bool children { get; set; }
-        }
 
         private const int UPLOAD_CHUNK_SIZE = 5; // Mb
 
@@ -450,5 +441,19 @@ namespace ForgeCMETool.Controllers
             // Other properties
         }
 
+        public async Task<string> GetFolderId(string projectId, string versionId, string userAccessToken)
+        {
+            VersionsApi versionApi = new VersionsApi();
+            versionApi.Configuration.AccessToken = userAccessToken;
+            dynamic versionItem = await versionApi.GetVersionItemAsync(projectId, versionId);
+            string itemId = versionItem.data.id;
+
+            ItemsApi itemApi = new ItemsApi();
+            itemApi.Configuration.AccessToken = userAccessToken;
+            dynamic item = await itemApi.GetItemAsync(projectId, itemId);
+            string folderId = item.data.relationships.parent.data.id;
+
+            return folderId;
+        }
     }
 }

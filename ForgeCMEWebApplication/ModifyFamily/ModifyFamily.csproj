@@ -54,15 +54,24 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ModifyFamily.bundle\Contents\ModifyFamily.addin" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="ModifyFamily.bundle\PackageContents.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>xcopy /Y /F "$(TargetDir)*.dll" "$(ProjectDir)UpdateRVTParam.bundle\Contents\"
-del /F "$(ProjectDir)..\forgesample\wwwroot\bundles\UpdateRVTParam.zip"
-"C:\Program Files\7-Zip\7z.exe" a -tzip "$(ProjectDir)../forgesample/wwwroot/bundles/UpdateRVTParam.zip" "$(ProjectDir)UpdateRVTParam.bundle\" -xr0!*.pdb</PreBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PostBuildEvent>xcopy /Y /F "$(TargetDir)*.dll" "$(ProjectDir)ModifyFamily.bundle\Contents\"
+del /F "$(ProjectDir)..\ForgeCMETool\wwwroot\bundles\ModifyFamily.bundle.zip"
+"C:\Program Files\7-Zip\7z.exe" a -tzip "$(ProjectDir)../ForgeCMETool/wwwroot/bundles/ModifyFamily.bundle.zip" "$(ProjectDir)ModifyFamily.bundle\" -xr0!*.pdb
+
+if exist "$(AppData)\Autodesk\REVIT\Addins\2018" copy "$(ProjectDir)\ModifyFamily.bundle\Contents\*.addin" "$(AppData)\Autodesk\REVIT\Addins\2018"
+if exist "$(AppData)\Autodesk\REVIT\Addins\2018" copy "$(ProjectDir)$(OutputPath)*.dll" "$(AppData)\Autodesk\REVIT\Addins\2018"</PostBuildEvent>
   </PropertyGroup>
 </Project>

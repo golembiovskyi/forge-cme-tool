@@ -11,6 +11,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Hangfire;
+using Hangfire.MemoryStorage;
+using Hangfire.Dashboard;
 
 namespace ForgeCMETool
 {
@@ -33,7 +36,8 @@ namespace ForgeCMETool
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-
+            // memory storage of jobs
+            services.AddHangfire(x => x.UseMemoryStorage());
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddSignalR();
         }
@@ -69,6 +73,27 @@ namespace ForgeCMETool
                 routes.MapHub<Controllers.ForgeCommunicationHub>("/api/signalr/forgecommunication");
             });
             //
+            // Hangfire
+            GlobalConfiguration.Configuration.UseMemoryStorage();
+            // wait until 1.7
+            /*app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                IsReadOnlyFunc = (DashboardContext context) => true
+            });*/
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = new[] { new MyAuthorizationFilter() }
+            });
+            app.UseHangfireDashboard();
+            app.UseHangfireServer();
+        }
+    }
+
+    public class MyAuthorizationFilter : IDashboardAuthorizationFilter
+    {
+        public bool Authorize(DashboardContext context)
+        {
+            return true; // open for now, wait until 1.7
         }
     }
 }

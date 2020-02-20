@@ -29,7 +29,7 @@ function list(control, endpoint) {
 }
 
 
-function fillCount( result ) {
+function fillCount(result) {
 
     for (var elem in result) {
         if (elem === 'total')
@@ -103,50 +103,31 @@ function createActivity(cb) {
 
 
 function startWorkitem() {
-    //
-    //let vvv = $('#userHubs')['0']['attributes'];
-    //['aria - activedescendant'];
-    //['0']['attributes']['aria - activedescendant']['nodeValue'];
-        //= "https://developer.api.autodesk.com/project/v1/hubs/b.14c4c930-3be2-47fb-a2a6-505e55e69eb9"
-    //
-    let sourceNode = $('#appBuckets').jstree(true).get_selected(true)[0];
-    // use == here because sourceNode may be undefined or null
-    if (sourceNode == null || sourceNode.type !== 'object' ) {
-        alert('Can not get the selected file, please make sure you select a file as input');
-        return;
-    }
-
-    let activityId = $('#activity').val();
-    if (activityId == null) { alert('Please select an activity'); return };
-
-    if (activityId.toLowerCase() === "countitactivity+dev"
-        || activityId.toLowerCase() === "deleteelementsactivity+dev" ) {
-        startConnection(function () {
-            var formData = new FormData();
-            formData.append('objectId', sourceNode.text);
-            formData.append('bucketId', sourceNode.parent);
-            formData.append('activityId', activityId);
-            formData.append('browerConnectionId', connectionId);
-            formData.append('data', JSON.stringify({
-                walls: $('#selectWalls')[0].checked,
-                floors: $('#selectFloors')[0].checked,
-                doors: $('#selectDoors')[0].checked,
-                windows: $('#selectWindows')[0].checked
-            }));
-            writeLog('Start checking input file...');
-            $.ajax({
-                url: 'api/forge/designautomation/startworkitem',
-                data: formData,
-                processData: false,
-                contentType: false,
-                type: 'POST',
-                success: function (res) {
-                    writeLog('Workitem started: ' + res.workItemId);
-                }
-            });
+    var inputFileField = document.getElementById('inputFile');
+    if (inputFileField.files.length === 0) { alert('Please select an input file'); return; }
+    if ($('#activity').val() === null) { alert('Please select an activity'); return };
+    var file = inputFileField.files[0];
+    startConnection(function () {
+        var formData = new FormData();
+        formData.append('inputFile', file);
+        formData.append('data', JSON.stringify({
+            width: $('#width').val(),
+            height: $('#height').val(),
+            activityName: $('#activity').val(),
+            browerConnectionId: connectionId
+        }));
+        writeLog('Uploading input file...');
+        $.ajax({
+            url: 'api/forge/designautomation/workitems',
+            data: formData,
+            processData: false,
+            contentType: false,
+            type: 'POST',
+            success: function (res) {
+                writeLog('Workitem started: ' + res.workItemId);
+            }
         });
-
-    }
+    });
 }
 
 function writeLog(text) {
@@ -193,9 +174,9 @@ function startConnection(onReady) {
 
 function test() {
     jQuery.ajax({
-        url: 'api/forge/oss/buckets',
+        url: 'api/forge/designautomation/testing',
         success: function (url) {
-            location.href = url;
+            //location.href = url;
         }
     });
 }

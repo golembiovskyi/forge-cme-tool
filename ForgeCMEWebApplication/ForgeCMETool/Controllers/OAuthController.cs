@@ -103,6 +103,7 @@ namespace ForgeCMETool.Controllers
         public string TokenPublic { get; set; }
         public string RefreshToken { get; set; }
         public DateTime ExpiresAt { get; set; }
+        public string UserId { get; set; }
 
         /// <summary>
         /// Perform the OAuth authorization via code
@@ -185,5 +186,6 @@ namespace ForgeCMETool.Controllers
         {
             return Environment.GetEnvironmentVariable(settingKey);
         }
+
     }
 }
